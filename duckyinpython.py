@@ -96,26 +96,23 @@ def sendString(line):
 
 def parseLine(line):
     global defaultDelay
-    if(line[0:3] == "REM"):
+    if line[:3] == "REM":
         # ignore ducky script comments
         pass
-    elif(line[0:5] == "DELAY"):
+    elif line[:5] == "DELAY":
         time.sleep(float(line[6:])/1000)
-    elif(line[0:6] == "STRING"):
+    elif line[:6] == "STRING":
         sendString(line[7:])
-    elif(line[0:5] == "PRINT"):
-        print("[SCRIPT]: " + line[6:])
-    elif(line[0:6] == "IMPORT"):
+    elif line[:5] == "PRINT":
+        print(f"[SCRIPT]: {line[6:]}")
+    elif line[:6] == "IMPORT":
         runScript(line[7:])
-    elif(line[0:13] == "DEFAULT_DELAY"):
+    elif line[:13] == "DEFAULT_DELAY":
         defaultDelay = int(line[14:]) * 10
-    elif(line[0:12] == "DEFAULTDELAY"):
+    elif line[:12] == "DEFAULTDELAY":
         defaultDelay = int(line[13:]) * 10
-    elif(line[0:3] == "LED"):
-        if(led.value == True):
-            led.value = False
-        else:
-            led.value = True
+    elif line[:3] == "LED":
+        led.value = led.value != True
     else:
         newScriptLine = convertLine(line)
         runScriptLine(newScriptLine)
@@ -151,8 +148,7 @@ def getProgrammingStatus():
     # see setup mode for instructions
     progStatusPin = digitalio.DigitalInOut(GP0)
     progStatusPin.switch_to_input(pull=digitalio.Pull.UP)
-    progStatus = not progStatusPin.value
-    return(progStatus)
+    return not progStatusPin.value
 
 
 defaultDelay = 0
@@ -166,8 +162,8 @@ def runScript(file):
         previousLine = ""
         for line in f:
             line = line.rstrip()
-            if(line[0:6] == "REPEAT"):
-                for i in range(int(line[7:])):
+            if line[:6] == "REPEAT":
+                for _ in range(int(line[7:])):
                     #repeat the last command
                     parseLine(previousLine)
                     time.sleep(float(defaultDelay)/1000)
@@ -192,25 +188,22 @@ def selectPayload():
     payload4State = not payload4Pin.value
 
 
-    if(payload1State == True):
-        payload = "payload.dd"
+    if (
+        payload1State
+        or not payload2State
+        and not payload3State
+        and not payload4State
+    ):
+        return "payload.dd"
 
-    elif(payload2State == True):
-        payload = "payload2.dd"
+    elif payload2State:
+        return "payload2.dd"
 
-    elif(payload3State == True):
-        payload = "payload3.dd"
-
-    elif(payload4State == True):
-        payload = "payload4.dd"
+    elif payload3State:
+        return "payload3.dd"
 
     else:
-        # if all pins are high, then no switch is present
-        # default to payload1
-        payload = "payload.dd"
-
-
-    return payload
+        return "payload4.dd"
 
 
 async def blink_pico_led(led):
